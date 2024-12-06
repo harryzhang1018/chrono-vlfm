@@ -64,8 +64,8 @@ lens_model = sens.PINHOLE
 update_rate = 30
 
 # Image width and height
-image_width = 1280
-image_height = 720
+image_width = 640
+image_height = 480
 
 # Camera's horizontal field of view
 fov = 1.408
@@ -94,8 +94,8 @@ lidar = sens.ChLidarSensor(
     mesh_body,             # body lidar is attached to
     20,                     # scanning rate in Hz
     offset_pose,            # offset pose
-    1280,                   # number of horizontal samples
-    720,                    # number of vertical channels
+    image_width,                   # number of horizontal samples
+    image_height,                    # number of vertical channels
     1.6,                    # horizontal field of view
     chrono.CH_PI/6,         # vertical field of view
     -chrono.CH_PI/6,
@@ -109,7 +109,7 @@ lidar = sens.ChLidarSensor(
 lidar.SetName("Lidar Sensor")
 lidar.SetLag(0)
 lidar.SetCollectionWindow(1/20)
-lidar.PushFilter(sens.ChFilterVisualize(1280, 720, "Raw Lidar Depth Data"))
+lidar.PushFilter(sens.ChFilterVisualize(image_width, image_height, "depth camera"))
 lidar.PushFilter(sens.ChFilterDIAccess())
 manager.AddSensor(lidar)
 
@@ -120,14 +120,13 @@ cam = sens.ChCameraSensor(
     image_width,            # image width
     image_height,           # image height
     fov                    # camera's horizontal field of view
-)
+    )
 
 
 cam.SetName("Camera Sensor")
 cam.SetLag(lag)
 cam.SetCollectionWindow(exposure_time)
-cam.PushFilter(sens.ChFilterVisualize(
-    image_width, image_height, "Arm Camera"))
+cam.PushFilter(sens.ChFilterVisualize(image_width, image_height, "rgb camera"))
 # Provides the host access to this RGBA8 buffer
 cam.PushFilter(sens.ChFilterRGBA8Access())
 
@@ -149,9 +148,12 @@ vis.AddLightWithShadow(chrono.ChVector3d(6,6,6),  # point
 vis.EnableCollisionShapeDrawing(True)
 timestep = 0.001
 render_step_size = 1.0 / 25  # FPS = 50
+control_step_size = 1.0 / 20  # 10 Hz
 render_steps = math.ceil(render_step_size / timestep)
+control_steps = math.ceil(control_step_size / timestep)
 step_number = 0
 render_frame = 0
+
 rt_timer = chrono.ChRealtimeStepTimer()
 
 while vis.Run():
@@ -166,7 +168,18 @@ while vis.Run():
         # vis.WriteImageToFile(filename)
         # render_frame += 1
     my_system.DoStepDynamics(timestep)
-    
+    # data logging and control applied at frequency control_step_size
+    if step_number % control_steps == 0:
+        # depth related data:
+        depth_buffer = lidar.GetMostRecentDIBuffer()
+        if depth_buffer.HasData():
+            depth_data = depth_buffer.GetDIData()
+            print('shape of depth data: ', depth_data.shape)
+        # camera RGB data:
+        camera_buffer = cam.GetMostRecentRGBA8Buffer()
+        if camera_buffer.HasData():
+            camera_data = camera_buffer.GetRGBA8Data()
+            print('shape of camera data: ', camera_data.shape)
     
     rt_timer.Spin(timestep)
     step_number += 1
