@@ -145,7 +145,7 @@ vis.EnableAbsCoordsysDrawing(True)
 vis.EnableBodyFrameDrawing(True)
 
 timestep = 0.001
-render_step_size = 1.0 / 25  # FPS = 50
+render_step_size = 1.0 / 20  # FPS = 50
 control_step_size = 1.0 / 20  # 10 Hz
 render_steps = math.ceil(render_step_size / timestep)
 control_steps = math.ceil(control_step_size / timestep)
@@ -168,7 +168,7 @@ while vis.Run():
         # filename = './IMG_jackal/img_' + str(render_frame) +'.jpg' 
         # vis.WriteImageToFile(filename)
         # render_frame += 1
-        rot_state = vir_robot.GetRot().GetCardanAnglesXYZ()
+        # turn_left(vir_robot)
         if 1 < sim_time < 2:
             if not isturn_left:
                 print('turning left')
@@ -193,12 +193,12 @@ while vis.Run():
         depth_buffer = lidar.GetMostRecentDIBuffer()
         if depth_buffer.HasData():
             depth_data = depth_buffer.GetDIData()
-            print('shape of depth data: ', depth_data.shape)
+            #print('shape of depth data: ', depth_data.shape)
         # camera RGB data:
         camera_buffer = cam.GetMostRecentRGBA8Buffer()
         if camera_buffer.HasData():
             camera_data = camera_buffer.GetRGBA8Data()
-            print('shape of camera data: ', camera_data.shape)
+            #print('shape of camera data: ', camera_data.shape)
     
     rt_timer.Spin(timestep)
     step_number += 1

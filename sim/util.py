@@ -2,12 +2,11 @@ import numpy as np
 import pychrono as chrono
 
 def turn_left(vir_robot):
-    rot_state = vir_robot.GetRot().GetCardanAnglesXYZ()
-    vir_robot.SetRot(chrono.QuatFromAngleAxis(rot_state.y+np.pi/6, chrono.ChVector3d(0, 1, 0)))
+    # rot_state = vir_robot.GetRot().GetCardanAnglesXYZ()
+    vir_robot.SetRot(chrono.QuatFromAngleY(np.pi/6)*vir_robot.GetRot())
 
 def turn_right(vir_robot):
-    rot_state = vir_robot.GetRot().GetCardanAnglesXYZ()
-    vir_robot.SetRot(chrono.QuatFromAngleAxis(rot_state.y-np.pi/6, chrono.ChVector3d(0, 1, 0)))
+    vir_robot.SetRot(chrono.QuatFromAngleY(-np.pi/6)*vir_robot.GetRot())
 
 def move_forward(vir_robot):
     rot_state = vir_robot.GetRot().GetCardanAnglesXYZ()
