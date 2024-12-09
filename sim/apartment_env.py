@@ -12,21 +12,19 @@ import pychrono.vehicle as veh
 import pychrono.sensor as sens
 import numpy as np
 import math
-
+from util import turn_left, turn_right, move_forward
 my_system = chrono.ChSystemSMC()
 my_system.SetCollisionSystemType(chrono.ChCollisionSystem.Type_BULLET)  
 
 
 
 patch_mat = chrono.ChContactMaterialSMC()
-# patch_mat.SetFriction(0.1)
-# patch_mat.SetRollingFriction(0.001)
-# terrain = veh.RigidTerrain(my_system)
-# patch = terrain.AddPatch(patch_mat, 
-#     chrono.ChCoordsysd(chrono.ChVector3d(0, -0.09, 0), chrono.Q_ROTATE_Z_TO_Y), 
-#     100, 100)
-# patch.SetColor(chrono.ChColor(0.0, 0.0, 0.0))
-# terrain.Initialize()
+
+
+vir_robot = chrono.ChBodyEasyBox(0.5, 0.5, 0.5, 100, True, True,patch_mat)
+vir_robot.SetPos(chrono.ChVector3d(0, 0.25, 0))
+vir_robot.SetFixed(True)
+my_system.Add(vir_robot)
 
 mmesh = chrono.ChTriangleMeshConnected()
 mmesh.LoadWavefrontMesh(project_root + '/data/environment/flat_env.obj', False, True)
@@ -36,6 +34,7 @@ mmesh.LoadWavefrontMesh(project_root + '/data/environment/flat_env.obj', False, 
 
 trimesh_shape = chrono.ChVisualShapeTriangleMesh()
 trimesh_shape.SetMesh(mmesh)
+# trimesh_shape.SetScale(chrono.ChVector3d(10, 10, 10))
 trimesh_shape.SetName("ENV MESH")
 trimesh_shape.SetMutable(False)
 
@@ -81,18 +80,14 @@ manager = sens.ChSensorManager(my_system)
 intensity = 1.0
 manager.scene.AddAreaLight(chrono.ChVector3f(0, 0, 4), chrono.ChColor(intensity, intensity, intensity), 500.0, chrono.ChVector3f(1,0,0), chrono.ChVector3f(0,-1,0))
 
-rotation_1 = chrono.QuatFromAngleAxis(np.pi/2, chrono.ChVector3d(0, 0, 1))
-rotation_2 = chrono.QuatFromAngleAxis(np.pi/2, chrono.ChVector3d(0, 1, 0))
-rotation_3 = chrono.QuatFromAngleAxis(np.pi/2, chrono.ChVector3d(0, 0, 1))
 
-rotation_quat = rotation_1 * rotation_2 * rotation_3
 
-offset_pose = chrono.ChFramed(
-    chrono.ChVector3d(0, 1, 0), rotation_quat)
+
+offset_pose = chrono.ChFramed(chrono.ChVector3d(0, 0.5, 0), chrono.Q_ROTATE_Z_TO_Y)
 
 lidar = sens.ChLidarSensor(
-    mesh_body,             # body lidar is attached to
-    20,                     # scanning rate in Hz
+    vir_robot,             # body lidar is attached to
+    update_rate,                     # scanning rate in Hz
     offset_pose,            # offset pose
     image_width,                   # number of horizontal samples
     image_height,                    # number of vertical channels
@@ -114,7 +109,7 @@ lidar.PushFilter(sens.ChFilterDIAccess())
 manager.AddSensor(lidar)
 
 cam = sens.ChCameraSensor(
-    mesh_body,              # body camera is attached to
+    vir_robot,              # body camera is attached to
     update_rate,            # update rate in Hz
     offset_pose,            # offset pose
     image_width,            # image width
@@ -145,7 +140,10 @@ vis.AddLightWithShadow(chrono.ChVector3d(6,6,6),  # point
                       55)                       # angle of FOV
 
 # vis.EnableShadows()
-vis.EnableCollisionShapeDrawing(True)
+# vis.EnableCollisionShapeDrawing(True)
+vis.EnableAbsCoordsysDrawing(True)
+vis.EnableBodyFrameDrawing(True)
+
 timestep = 0.001
 render_step_size = 1.0 / 25  # FPS = 50
 control_step_size = 1.0 / 20  # 10 Hz
@@ -156,6 +154,9 @@ render_frame = 0
 
 rt_timer = chrono.ChRealtimeStepTimer()
 
+isturn_left = False
+isturn_right = False
+ismove_forward = False
 while vis.Run():
     manager.Update()
 
@@ -167,6 +168,24 @@ while vis.Run():
         # filename = './IMG_jackal/img_' + str(render_frame) +'.jpg' 
         # vis.WriteImageToFile(filename)
         # render_frame += 1
+        rot_state = vir_robot.GetRot().GetCardanAnglesXYZ()
+        if 1 < sim_time < 2:
+            if not isturn_left:
+                print('turning left')
+                turn_left(vir_robot)
+                isturn_left = True
+        if 2 < sim_time < 3:
+            if not ismove_forward:
+                print('moving forward')
+                move_forward(vir_robot)
+                ismove_forward = True
+        if 3 < sim_time < 4:
+            if not isturn_right:
+                print('turning right')
+                turn_right(vir_robot)
+                isturn_right = True
+
+
     my_system.DoStepDynamics(timestep)
     # data logging and control applied at frequency control_step_size
     if step_number % control_steps == 0:
